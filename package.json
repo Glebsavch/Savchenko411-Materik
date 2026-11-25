@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node core/run.js",
-    "test:headed": "node core/run.js --headed",
-    "test:demo": "node core/run.js --demo --headed login.spec.js --grep ТК-А07"
+    "test:headed": "node core/run.js --headed"
   },
   "engines": {
     "node": ">=24"

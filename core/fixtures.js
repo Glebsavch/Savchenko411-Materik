@@ -3,24 +3,26 @@ import pino from 'pino';
 import * as allure from 'allure-js-commons';
 import { redact } from './redact.js';
 
-async function attachScreenshot(page, info, name, region) {
-  const mask = [page.locator(
-    'input:visible, textarea:visible, .personal-link:visible, .auth_wr_inner:visible, ' +
-    '.bx-soa-customer:visible, #bx-soa-properties:visible, [class*=user-name]:visible, [class*=profile-name]:visible'
-  )];
-  const options = { mask, maskColor: '#373b47', animations: 'disabled', timeout: 10_000 };
-  const clip = await region?.boundingBox({ timeout: 6000 });
-  const heading = page.locator('h1:visible').first();
-  let body;
-  if (clip) {
-    body = await page.screenshot({ ...options, clip });
-  } else if (await heading.isVisible()) {
-    body = await heading.screenshot(options);
-  } else {
-    body = await page.screenshot({
-      ...options, style: 'body * { color: transparent !important; text-shadow: none !important; }'
+async function attachScreenshot(page, info, name, region, privateFields) {
+  if (privateFields) {
+    await expect(region).toBeVisible();
+    const body = await region.screenshot({
+      mask: [privateFields], maskColor: '#d6d9dc', animations: 'disabled'
     });
+    await info.attach(name, { body, contentType: 'image/png' });
+    return;
   }
+  const mask = [page.locator('input, textarea, .personal-link, .auth_wr_inner, .bx-soa-customer, #bx-soa-properties, [class*=user-name], [class*=profile-name]')];
+  const options = { mask, animations: 'disabled', timeout: 6000 };
+  const candidates = [region, 
+     page.locator('h1:visible').first()];
+  let target;
+  for (const candidate of candidates) {
+    if (candidate && await candidate.isVisible()) { target = candidate; break; }
+  }
+  const body = target ? await target.screenshot(options) : await page.screenshot({
+    ...options, style: 'body * { color: transparent !important; text-shadow: none !important; }'
+  });
   await info.attach(name, { body, contentType: 'image/png' });
 }
 
@@ -32,7 +34,7 @@ export const test = base.extend({
     const logger = pino({
       level, base: null, timestamp: pino.stdTimeFunctions.isoTime,
       formatters: { level: label => ({ level: label.toUpperCase() }) }
-    }, { write: line => lines.push(line.trimEnd()) });
+    }, { write: line => lines.push(redact(line.trimEnd())) });
     function log(severity, message) {
       const method = severity === 'WARNING' ? 'warn' : severity.toLowerCase();
       logger[method](redact(message));
@@ -42,14 +44,8 @@ export const test = base.extend({
     await allure.parameter('Тест-кейс', caseId);
     const journal = {
       log,
-      credentials(login, password) {
-        const message = `Данные входа: login=${login || '(пусто)'} password=${password || '(пусто)'}`;
-        const masked = redact(message, [login, password]);
-        log('INFO', masked);
-        if (process.env.QA_DEMO === '1') console.log(masked);
-      },
       async parameters(values) {
-        for (const [name, value] of Object.entries(values)) await allure.parameter(name, redact(value));
+        for (const [name, value] of Object.entries(values)) await allure.parameter(name, value);
       },
       step: (name, action) => test.step(name, async () => {
         log('INFO', name);
@@ -63,7 +59,7 @@ export const test = base.extend({
           throw error;
         }
       }),
-      screenshot: (name, region) => attachScreenshot(page, info, name, region)
+      screenshot: (name, region, privateFields) => attachScreenshot(page, info, name, region, privateFields)
     };
     log('DEBUG', 'Открыт изолированный контекст браузера');
     await use(journal);

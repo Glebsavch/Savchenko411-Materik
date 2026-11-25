@@ -6,15 +6,13 @@ import { fileURLToPath } from 'node:url';
 import { redact } from './redact.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const args = process.argv.slice(2);
-const demo = args.includes('--demo') || process.env.QA_DEMO === '1';
 const id = process.env.QA_DEMO_RUN_ID || new Date().toISOString().replace(/[:.]/g, '-');
 if (!/^[\w-]+$/.test(id)) throw new Error('Некорректный идентификатор прогона.');
 const run = path.join(root, 'runs', id);
 const raw = path.join(run, 'allure-results');
 const html = path.join(run, 'report');
 await mkdir(raw, { recursive: true });
-const env = { ...process.env, QA_DEMO: demo ? '1' : '0', ALLURE_RESULTS_DIR: raw, PW_OUTPUT_DIR: path.join(run, 'browser') };
+const env = { ...process.env, ALLURE_RESULTS_DIR: raw, PW_OUTPUT_DIR: path.join(run, 'browser') };
 
 function execute(relativeFile, args) {
   const child = spawn(process.execPath, [path.join(root, relativeFile), ...args], {
@@ -30,7 +28,7 @@ function execute(relativeFile, args) {
   });
 }
 
-const status = await execute('node_modules/@playwright/test/cli.js', ['test', ...args.filter(arg => arg !== '--demo')]);
+const status = await execute('node_modules/@playwright/test/cli.js', ['test', ...process.argv.slice(2)]);
 
 // Playwright добавляет текстовый снимок DOM при падении. Он может содержать данные профиля.
 async function sanitizeDiagnostics(node) {

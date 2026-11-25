@@ -1,12 +1,8 @@
 import { account, buyer } from './data.js';
 
-export function redact(message, extraValues = []) {
+export function redact(message) {
   let safe = String(message);
-  const values = [account.password, account.login, buyer.name, buyer.phone, buyer.email, ...extraValues];
-  const variants = new Set(values.filter(Boolean).flatMap(value => [
-    value, JSON.stringify(value).slice(1, -1), new URLSearchParams({ value }).toString().slice(6)
-  ]));
-  for (const value of [...variants].sort((a, b) => b.length - a.length)) {
+  for (const value of [account.password, account.login, buyer.name, buyer.phone, buyer.email].filter(Boolean)) {
     safe = safe.replaceAll(value, '***');
   }
   return safe.replace(/(\b(?:authorization|set-cookie|cookie)\s*:\s*)[^\r\n]+/gi, '$1***')
