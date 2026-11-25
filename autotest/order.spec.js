@@ -7,10 +7,12 @@ import { BasketPage } from '../ui/basket-page.js';
 import { CheckoutPage } from '../ui/checkout-page.js';
 
 test('ТК-М08 → ТК-М22 · От поиска товара до оформления самовывоза', async ({ page, journal }, info) => {
+  test.skip(!account.login || !account.password, 'Нужны логин и пароль учебной записи');
   await info.attach('Тестовые данные', { path: fileURLToPath(new URL('../report/Тестовые данные.pdf', import.meta.url)), contentType: 'application/pdf' });
   await journal.parameters({ 'Поиск': product.query, 'Товар': product.name, 'Добавляемое количество': String(product.quantity), 'Получение': 'Самовывоз' });
   const login = new LoginPage(page), shop = new ShopPage(page), cart = new BasketPage(page);
   await journal.step('Войти по почте и подтвердить владельца кабинета', async () => {
+    journal.credentials(account.login, account.password);
     await login.visit(); await login.enter(account.login, account.password); await login.profile(account.login);
   });
   const before = await journal.step('Запомнить исходное количество и сумму корзины', async () => {

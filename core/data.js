@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 export const account = { login: process.env.MATERIK_LOGIN || '', password: process.env.MATERIK_PASSWORD || '' };
+export const demoAccount = { login: 'demo-411@example.invalid', password: 'Demo-411-Materik' };
 export const buyer = { name: 'Иван Тестовый', email: 'student@example.test', phone: '79000000003' };
 export const product = {
   query: '00-00066857',
@@ -20,5 +21,5 @@ export const negative = [
 export function values(kind) {
   const id = { emptyLogin: '', absent: 'qa-' + randomUUID() + '@example.invalid', format: 'student@' };
   const pw = { emptyPassword: '', wrongPassword: 'Invalid-' + randomUUID() };
-  return [id[kind] ?? account.login, pw[kind] ?? account.password];
+  return [id[kind] ?? account.login, pw[kind] ?? demoAccount.password];
 }

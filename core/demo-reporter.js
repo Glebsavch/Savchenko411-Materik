@@ -17,6 +17,7 @@ export default class DemoReporter {
     this.index = 0;
     console.log('01 / Выбор сайта');
     console.log(this.project.use.baseURL);
+    console.log(this.project.use.headless === false ? 'Режим: видимый браузер (headed)' : 'Режим: headless');
     console.log('Запланировано тестов: ' + this.total);
     this.listOnly = process.argv.includes('--list');
     if (this.listOnly) for (const test of this.tests) console.log('  ' + test.title);
@@ -44,6 +45,10 @@ export default class DemoReporter {
   onTestEnd(test, result) {
     console.log('  Результат: ' + statusText[result.status]);
     if (result.error) this.onError(result.error);
+  }
+
+  onStdOut(chunk) {
+    process.stdout.write(chunk);
   }
 
   onError(error) {

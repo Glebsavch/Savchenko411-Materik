@@ -1,4 +1,6 @@
-﻿$ErrorActionPreference = 'Stop'
+﻿param([switch]$DemoOnly)
+
+$ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 Set-Location -LiteralPath $PSScriptRoot
 if (-not (Get-Command node.exe -ErrorAction SilentlyContinue)) {
@@ -15,23 +17,27 @@ if (Get-Command pnpm.cmd -ErrorAction SilentlyContinue) {
 } else { throw 'Требуется pnpm или npm из поставки Node.js.' }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 try {
-    if (-not $env:MATERIK_LOGIN -or -not $env:MATERIK_PASSWORD) {
-        $credential = Get-Credential -Message 'Учебная запись www.materik-m.ru для демонстрации тестов'
-        if (-not $credential) { exit 1 }
-        $env:MATERIK_LOGIN = $credential.UserName
-        $env:MATERIK_PASSWORD = $credential.GetNetworkCredential().Password
+    $testArgs = @('core/run.js', '--demo', '--headed')
+    if ($DemoOnly) {
+        $testArgs += @('login.spec.js', '--grep', 'ТК-А07')
+    } else {
+        if (-not $env:MATERIK_LOGIN -or -not $env:MATERIK_PASSWORD) {
+            $credential = Get-Credential -Message 'Учебная запись www.materik-m.ru для демонстрации тестов'
+            if (-not $credential) { exit 1 }
+            $env:MATERIK_LOGIN = $credential.UserName
+            $env:MATERIK_PASSWORD = $credential.GetNetworkCredential().Password
+        }
+        if (-not $env:MATERIK_LOGIN -or -not $env:MATERIK_PASSWORD) { throw 'Для полного прогона нужны логин и пароль.' }
     }
-    if (-not $env:MATERIK_LOGIN -or -not $env:MATERIK_PASSWORD) { throw 'Для демонстрации всех тестов нужны логин и пароль.' }
-    $env:QA_DEMO = '1'
     $env:QA_DEMO_RUN_ID = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH-mm-ss-fffZ') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
-    & node core/run.js --headed
+    & node @testArgs
     $result = $LASTEXITCODE
     $report = Join-Path $PSScriptRoot "runs\$env:QA_DEMO_RUN_ID\report\index.html"
     if (Test-Path -LiteralPath $report -PathType Leaf) {
-        Write-Host '07 / Сдача и приёмка — открывается Allure текущего прогона'
+        Write-Host 'Открываю Allure-отчёт текущего прогона'
         Start-Process -FilePath $report
     } elseif ($result -eq 0) { throw 'Файл отчета текущего прогона отсутствует.' }
     exit $result
 } finally {
-    Remove-Item Env:MATERIK_LOGIN,Env:MATERIK_PASSWORD -ErrorAction SilentlyContinue
+    Remove-Item Env:MATERIK_LOGIN,Env:MATERIK_PASSWORD,Env:QA_DEMO_RUN_ID -ErrorAction SilentlyContinue
 }
